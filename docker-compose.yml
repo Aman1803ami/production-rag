@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # ==============================================================================
+  # FastAPI RAG Application Service
+  # ==============================================================================
+  rag-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: production_rag_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - HOST=0.0.0.0
+      - PORT=8000
+      - REDIS_URL=redis://redis:6379/0
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=production_rag_docs
+      - PRIMARY_MODEL=${PRIMARY_MODEL:-gemini/gemini-2.0-flash}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - FALLBACK_MODEL=${FALLBACK_MODEL:-groq/llama-3.1-8b-instant}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    volumes:
+      - ./data:/app/data
+
+  # ==============================================================================
+  # Qdrant Vector Database
+  # ==============================================================================
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: production_rag_qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  # ==============================================================================
+  # Redis Cache (Two-Tier Query & Chunk Cache)
+  # ==============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: production_rag_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_cache_data:/data
+
+volumes:
+  qdrant_data:
+    driver: local
+  redis_cache_data:
+    driver: local

@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Production RAG Console & Live Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0a0d14;
+      --bg-card: rgba(18, 24, 38, 0.7);
+      --bg-card-hover: rgba(26, 34, 52, 0.85);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: #6366f1;
+      --accent-primary: #6366f1;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+      --accent-cyan: #06b6d4;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.12) 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border-subtle);
+      backdrop-filter: blur(12px);
+      background: rgba(10, 13, 20, 0.6);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--accent-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.2rem;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 1.2rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .status-bar {
+      display: flex;
+      gap: 1.25rem;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      font-weight: 500;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+    }
+
+    .status-dot.warning {
+      background: var(--accent-amber);
+      box-shadow: 0 0 8px var(--accent-amber);
+    }
+
+    main {
+      flex: 1;
+      max-width: 1440px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 1024px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .glass-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+      transition: border-color 0.2s ease;
+    }
+
+    .glass-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 0.25rem;
+      border-radius: 10px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.6rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--accent-primary);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input[type="text"], textarea, select {
+      width: 100%;
+      background: rgba(10, 14, 24, 0.8);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 0.8rem 1rem;
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input[type="text"]:focus, textarea:focus, select:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 120px;
+      line-height: 1.5;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 0.85rem 1.5rem;
+      background: var(--accent-gradient);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      padding: 0.6rem 1rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Response & Inspector Column */
+    .results-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .answer-box {
+      background: rgba(14, 18, 30, 0.9);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 1.5rem;
+      position: relative;
+    }
+
+    .answer-text {
+      font-size: 1.02rem;
+      line-height: 1.7;
+      color: #e2e8f0;
+    }
+
+    .answer-text h1, .answer-text h2, .answer-text h3 {
+      color: var(--accent-cyan);
+      margin-top: 1.25rem;
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+    }
+
+    .answer-text h3:first-child {
+      margin-top: 0;
+    }
+
+    .answer-text p {
+      margin-bottom: 0.85rem;
+    }
+
+    .answer-text ul, .answer-text ol {
+      margin-left: 1.5rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .answer-text li {
+      margin-bottom: 0.35rem;
+      line-height: 1.6;
+    }
+
+    .answer-text strong {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .answer-text code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: #f472b6;
+    }
+
+    .answer-text blockquote {
+      border-left: 3px solid var(--accent-primary);
+      padding-left: 1rem;
+      margin: 0.75rem 0;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-cache {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-model {
+      background: rgba(99, 102, 241, 0.15);
+      color: #818cf8;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .badge-fallback {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    /* Latency Waterfall Bar */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .metric-tile {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
+    }
+
+    .metric-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 0.2rem;
+    }
+
+    .metric-value {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    /* Chunk cards */
+    .chunk-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+    }
+
+    .chunk-card {
+      background: rgba(10, 14, 24, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 1rem;
+      font-size: 0.88rem;
+      position: relative;
+    }
+
+    .chunk-meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-bottom: 0.5rem;
+      font-family: var(--font-mono);
+    }
+
+    .chunk-content {
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+
+    /* Empty state */
+    .empty-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .empty-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="logo-badge">⚡</div>
+      <div>
+        <div class="brand-title">Production RAG Console</div>
+        <div class="brand-sub">FastAPI • Qdrant • Redis Two-Tier Cache • FlashRank • LiteLLM</div>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-pill">
+        <span class="status-dot" id="redis-dot"></span>
+        <span id="redis-label">Redis</span>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot" id="qdrant-dot"></span>
+        <span id="qdrant-label">Qdrant</span>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot" id="llm-dot"></span>
+        <span id="llm-label">LiteLLM</span>
+      </div>
+      <a href="/docs" target="_blank" class="btn-secondary" style="text-decoration: none;">API Docs (Swagger)</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Left Column: Controls & Ingestion -->
+    <section>
+      <div class="glass-card">
+        <div class="tab-nav">
+          <button class="tab-btn active" id="tab-query-btn" onclick="switchTab('query')">Query Pipeline</button>
+          <button class="tab-btn" id="tab-ingest-btn" onclick="switchTab('ingest')">Document Ingestion</button>
+        </div>
+
+        <!-- Query Form -->
+        <div id="query-panel">
+          <div class="form-group">
+            <label for="query-input">User Query / Question</label>
+            <textarea id="query-input" placeholder="e.g. How does our Redis caching layer and reranking fallback operate?"></textarea>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label for="top-k-select">Retrieval Candidates (Top-K)</label>
+              <select id="top-k-select">
+                <option value="5">Top 5</option>
+                <option value="10" selected>Top 10</option>
+                <option value="20">Top 20</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="rerank-top-n">Rerank Passages (Top-N)</label>
+              <select id="rerank-top-n">
+                <option value="3">Top 3</option>
+                <option value="5" selected>Top 5</option>
+                <option value="10">Top 10</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+            <input type="checkbox" id="bypass-cache" style="width: 16px; height: 16px;">
+            <label for="bypass-cache" style="margin-bottom: 0; text-transform: none; cursor: pointer;">Bypass Redis Query Cache</label>
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="streaming-mode" style="width: 16px; height: 16px;">
+            <label for="streaming-mode" style="margin-bottom: 0; text-transform: none; cursor: pointer;">Enable Real-time SSE Streaming</label>
+          </div>
+
+          <button class="btn-primary" id="btn-submit-query" onclick="executeQuery()">
+            <span id="query-spinner" class="spinner" style="display: none;"></span>
+            <span>Execute RAG Query</span>
+          </button>
+        </div>
+
+        <!-- Ingest Form -->
+        <div id="ingest-panel" style="display: none;">
+          <div class="form-group">
+            <label for="ingest-doc-id">Document ID (Optional)</label>
+            <input type="text" id="ingest-doc-id" placeholder="e.g. architecture-v1-spec">
+          </div>
+
+          <div class="form-group">
+            <label for="ingest-text">Paste Text / Markdown Content</label>
+            <textarea id="ingest-text" placeholder="Paste comprehensive knowledge base documentation, notes, or articles here..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Or Upload Document (PDF / TXT / MD)</label>
+            <input type="file" id="file-upload" accept=".pdf,.txt,.md" style="width: 100%; font-size: 0.85rem; color: var(--text-muted);">
+          </div>
+
+          <button class="btn-primary" id="btn-submit-ingest" onclick="executeIngest()">
+            <span id="ingest-spinner" class="spinner" style="display: none;"></span>
+            <span>Chunk & Index into Qdrant</span>
+          </button>
+          <div id="ingest-result-msg" style="margin-top: 1rem; font-size: 0.85rem;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Results & Observability Inspector -->
+    <section class="results-container">
+      <div class="glass-card">
+        <div class="card-title">
+          <span>Generated Answer</span>
+          <div style="margin-left: auto; display: flex; gap: 0.5rem;" id="response-badges"></div>
+        </div>
+
+        <div id="answer-container">
+          <div class="empty-placeholder" id="placeholder-state">
+            <div class="empty-icon">✨</div>
+            <div>Enter a query or ingest documentation to inspect the full RAG pipeline execution.</div>
+          </div>
+          <div class="answer-box" id="active-answer-box" style="display: none;">
+            <div class="answer-text" id="answer-content"></div>
+
+            <div class="metrics-grid" id="latency-breakdown">
+              <div class="metric-tile">
+                <div class="metric-label">Cache Lookup</div>
+                <div class="metric-value" id="lat-cache">-</div>
+              </div>
+              <div class="metric-tile">
+                <div class="metric-label">Embedding</div>
+                <div class="metric-value" id="lat-embed">-</div>
+              </div>
+              <div class="metric-tile">
+                <div class="metric-label">Vector Search</div>
+                <div class="metric-value" id="lat-search">-</div>
+              </div>
+              <div class="metric-tile">
+                <div class="metric-label">Reranking</div>
+                <div class="metric-value" id="lat-rerank">-</div>
+              </div>
+              <div class="metric-tile">
+                <div class="metric-label">Generation</div>
+                <div class="metric-value" id="lat-gen">-</div>
+              </div>
+              <div class="metric-tile">
+                <div class="metric-label">Total Latency</div>
+                <div class="metric-value" style="color: var(--accent-emerald);" id="lat-total">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Retrieved & Reranked Source Chunks -->
+      <div class="glass-card">
+        <div class="card-title">
+          <span>Retrieved Context Chunks</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-left: auto;" id="chunk-count-badge">0 chunks</span>
+        </div>
+        <div class="chunk-list" id="chunks-container">
+          <div style="color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0;">
+            Source chunks and their FlashRank scores will appear here after query execution.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    async function checkHealth() {
+      try {
+        const res = await fetch('/api/v1/health');
+        const data = await res.json();
+        
+        // Redis
+        const rDot = document.getElementById('redis-dot');
+        const rLabel = document.getElementById('redis-label');
+        if (data.services.redis.healthy) {
+          rDot.className = 'status-dot';
+          rLabel.textContent = 'Redis (Online)';
+        } else {
+          rDot.className = 'status-dot warning';
+          rLabel.textContent = 'Redis (Soft-Fail)';
+        }
+
+        // Qdrant
+        const qDot = document.getElementById('qdrant-dot');
+        const qLabel = document.getElementById('qdrant-label');
+        if (data.services.qdrant.healthy) {
+          qDot.className = 'status-dot';
+          qLabel.textContent = 'Qdrant (Ready)';
+        } else {
+          qDot.className = 'status-dot warning';
+          qLabel.textContent = 'Qdrant (Offline)';
+        }
+
+        // LLM
+        const lDot = document.getElementById('llm-dot');
+        const lLabel = document.getElementById('llm-label');
+        lDot.className = 'status-dot';
+        lLabel.textContent = 'LiteLLM';
+      } catch (e) {
+        console.warn('Health check failed', e);
+      }
+    }
+
+    function switchTab(tab) {
+      const qBtn = document.getElementById('tab-query-btn');
+      const iBtn = document.getElementById('tab-ingest-btn');
+      const qPanel = document.getElementById('query-panel');
+      const iPanel = document.getElementById('ingest-panel');
+
+      if (tab === 'query') {
+        qBtn.classList.add('active');
+        iBtn.classList.remove('active');
+        qPanel.style.display = 'block';
+        iPanel.style.display = 'none';
+      } else {
+        iBtn.classList.add('active');
+        qBtn.classList.remove('active');
+        iPanel.style.display = 'block';
+        qPanel.style.display = 'none';
+      }
+    }
+
+    async function executeQuery() {
+      const query = document.getElementById('query-input').value.trim();
+      if (!query) {
+        alert('Please enter a query.');
+        return;
+      }
+
+      const topK = parseInt(document.getElementById('top-k-select').value);
+      const rerankTopN = parseInt(document.getElementById('rerank-top-n').value);
+      const bypassCache = document.getElementById('bypass-cache').checked;
+      const isStreaming = document.getElementById('streaming-mode').checked;
+
+      const spinner = document.getElementById('query-spinner');
+      const btn = document.getElementById('btn-submit-query');
+      const placeholder = document.getElementById('placeholder-state');
+      const answerBox = document.getElementById('active-answer-box');
+      const answerContent = document.getElementById('answer-content');
+      const badgesContainer = document.getElementById('response-badges');
+      const chunksContainer = document.getElementById('chunks-container');
+
+      spinner.style.display = 'inline-block';
+      btn.disabled = true;
+      placeholder.style.display = 'none';
+      answerBox.style.display = 'block';
+      badgesContainer.innerHTML = '';
+
+      if (isStreaming) {
+        answerContent.textContent = '';
+        chunksContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;">Streaming active...</div>';
+
+        try {
+          const res = await fetch('/api/v1/query/stream', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: query,
+              top_k: topK,
+              rerank_top_n: rerankTopN,
+              bypass_cache: bypassCache
+            })
+          });
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+
+          let accumulatedText = '';
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const textChunk = decoder.decode(value);
+            const lines = textChunk.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const token = line.replace('data: ', '');
+                if (token === '[DONE]') break;
+                accumulatedText += token;
+                answerContent.innerHTML = window.marked ? marked.parse(accumulatedText) : accumulatedText;
+              }
+            }
+          }
+          badgesContainer.innerHTML = '<span class="badge badge-model">Stream Complete</span>';
+        } catch (err) {
+          answerContent.textContent = 'Streaming error: ' + err.message;
+        } finally {
+          spinner.style.display = 'none';
+          btn.disabled = false;
+        }
+        return;
+      }
+
+      // Standard query
+      try {
+        const res = await fetch('/api/v1/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: query,
+            top_k: topK,
+            rerank_top_n: rerankTopN,
+            bypass_cache: bypassCache
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || 'Query failed');
+        }
+
+        const data = await res.json();
+
+        // Render Structured Answer with Marked
+        answerContent.innerHTML = window.marked ? marked.parse(data.answer) : data.answer;
+
+        // Render Badges
+        if (data.is_cached) {
+          if (data.cache_type === 'semantic') {
+            const pct = data.semantic_similarity ? (data.semantic_similarity * 100).toFixed(1) : '>90';
+            badgesContainer.innerHTML += `<span class="badge badge-cache">⚡ Semantic Cache Hit (${pct}%)</span>`;
+          } else {
+            badgesContainer.innerHTML += '<span class="badge badge-cache">⚡ Exact Cache Hit</span>';
+          }
+        }
+        badgesContainer.innerHTML += `<span class="badge badge-model">${data.model_used}</span>`;
+        if (data.fallback_triggered) {
+          badgesContainer.innerHTML += '<span class="badge badge-fallback">LLM Fallback Activated</span>';
+        }
+        if (data.reranker_fallback_triggered) {
+          badgesContainer.innerHTML += '<span class="badge badge-fallback">Reranker RRF Fallback</span>';
+        }
+
+        // Render Latencies
+        document.getElementById('lat-cache').textContent = `${data.latency.cache_lookup_ms} ms`;
+        document.getElementById('lat-embed').textContent = `${data.latency.embedding_ms} ms`;
+        document.getElementById('lat-search').textContent = `${data.latency.vector_search_ms} ms`;
+        document.getElementById('lat-rerank').textContent = `${data.latency.rerank_ms} ms`;
+        document.getElementById('lat-gen').textContent = `${data.latency.llm_generation_ms} ms`;
+        document.getElementById('lat-total').textContent = `${data.latency.total_ms} ms`;
+
+        // Render Chunks
+        document.getElementById('chunk-count-badge').textContent = `${data.sources.length} chunks`;
+        if (data.sources.length === 0) {
+          chunksContainer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem;">No relevant chunks matched query.</div>';
+        } else {
+          chunksContainer.innerHTML = data.sources.map(s => `
+            <div class="chunk-card">
+              <div class="chunk-meta">
+                <span>Rank #${s.rank} • Doc: ${s.document_id}</span>
+                <span style="color: var(--accent-cyan);">Score: ${s.score.toFixed(4)}</span>
+              </div>
+              <div class="chunk-content">${s.content}</div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        answerContent.textContent = 'Error: ' + err.message;
+      } finally {
+        spinner.style.display = 'none';
+        btn.disabled = false;
+      }
+    }
+
+    async function executeIngest() {
+      const text = document.getElementById('ingest-text').value.trim();
+      const fileInput = document.getElementById('file-upload');
+      const docId = document.getElementById('ingest-doc-id').value.trim() || undefined;
+      const resultMsg = document.getElementById('ingest-result-msg');
+      const spinner = document.getElementById('ingest-spinner');
+      const btn = document.getElementById('btn-submit-ingest');
+
+      resultMsg.innerHTML = '';
+
+      if (fileInput.files.length > 0) {
+        // File Upload
+        spinner.style.display = 'inline-block';
+        btn.disabled = true;
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        if (docId) formData.append('document_id', docId);
+
+        try {
+          const res = await fetch('/api/v1/ingest/file', {
+            method: 'POST',
+            body: formData
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || 'File ingestion failed');
+          resultMsg.innerHTML = `<span style="color: var(--accent-emerald);">✔ Ingested ${data.total_chunks} chunks in ${data.time_taken_ms}ms (Doc: ${data.document_id})</span>`;
+          fileInput.value = '';
+        } catch (e) {
+          resultMsg.innerHTML = `<span style="color: var(--accent-rose);">❌ ${e.message}</span>`;
+        } finally {
+          spinner.style.display = 'none';
+          btn.disabled = false;
+        }
+      } else if (text) {
+        // Raw Text Ingestion
+        spinner.style.display = 'inline-block';
+        btn.disabled = true;
+
+        try {
+          const res = await fetch('/api/v1/ingest/text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content: text,
+              document_id: docId
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || 'Ingestion failed');
+          resultMsg.innerHTML = `<span style="color: var(--accent-emerald);">✔ Ingested ${data.total_chunks} chunks in ${data.time_taken_ms}ms (Doc: ${data.document_id})</span>`;
+          document.getElementById('ingest-text').value = '';
+        } catch (e) {
+          resultMsg.innerHTML = `<span style="color: var(--accent-rose);">❌ ${e.message}</span>`;
+        } finally {
+          spinner.style.display = 'none';
+          btn.disabled = false;
+        }
+      } else {
+        alert('Please paste text or select a file to ingest.');
+      }
+    }
+
+    // Initial check
+    checkHealth();
+    setInterval(checkHealth, 8000);
+  </script>
+</body>
+</html>
